@@ -1,3 +1,4 @@
+#Just for practice 
 import random
 
 from IPython.display import clear_output
