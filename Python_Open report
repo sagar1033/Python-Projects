@@ -1,0 +1,176 @@
+#importing Final class from db_test file
+import atexit
+from Color import *
+import time
+import paramiko
+from paramiko import sftp
+import os
+from scp import SCPClient
+import configparser
+import timeit
+start = timeit.default_timer()
+config = configparser.ConfigParser()
+config.read("config.txt")
+job_run = config["paths"]["job_run"]
+ssh = paramiko.SSHClient()
+class Myssh:
+    '''Login to QA Server !!!!'''
+    #print ("Login Started")
+    try:
+        def __init__(self, host, user, password, port=22):
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(host, port=port, username=user, password=password)
+            stdin, stdout, stderr = ssh.exec_command('pwd')
+            print("Login Done")
+    except Exception:
+        print("Login failed")
+    def buildCopy(self):
+        build_name = input("enter build name\n")
+        yod_build = '9.0.yodreport'
+        open_build = 'openreportmainlegacy'
+        read_report = 'main.readrepor'
+        if yod_build in build_name:
+            try:
+                scp_command = "sshpass -p 'installer' scp   -r   installer@192.168.84.168:/opt/build/releases/yodreport_branch/"
+                scp_str = scp_command + build_name + ' .'
+                copy_path = "/opt/Openreports/yodreport_installers/"
+                print(scp_str)
+                print("yodreport copy started")
+                stdin, stdout, stderr = ssh.exec_command(
+                    'mkdir -p ' + copy_path + '; cd ' + copy_path + ' ; pwd ; ' + scp_str + ' ')
+                print(stdout.read())
+                print("yodreport copy done")
+            except Exception:
+                print(Exception)
+                exit(1)
+        elif open_build in build_name:
+            try:
+                scp_command = "sshpass -p 'installer' scp   -r   installer@192.168.84.168:/opt/build/releases/openreportmainlegacy_branch/"
+                scp_str = scp_command + build_name + ' .'
+                print(scp_str)
+                copy_path = "/opt/Openreports/openreport_installers"
+                print(scp_str)
+                print("openreport copy started")
+                stdin, stdout, stderr = ssh.exec_command('mkdir -p '+copy_path+'; cd '+copy_path+' ; pwd ; '+scp_str+'')
+            except Exception:
+                print(Exception)
+                exit(1)
+            print("openreport copy done")
+        elif read_report in build_name:
+            try:
+                scp_command = "sshpass -p 'installer' scp   -r   installer@192.168.84.168://opt/build/releases/mainreadreport_branch/"
+                scp_str = scp_command + build_name + ' .'
+                copy_path = "/opt/Openreports/readreport_installers"
+                print(scp_str)
+                print("readreport copy started")
+                stdin, stdout, stderr = ssh.exec_command(
+                    'mkdir -p ' + copy_path + '; cd ' + copy_path + ' ; pwd ; ' + scp_str + ' ')
+                print(stdout.read())
+            except Exception:
+                print(Exception)
+                exit(1)
+            print("read build copy done")
+        else:
+            print("Build is not found")
+     #This method check the build is file or not
+    def buildDeployment(self):
+        try:
+            build_name = input("enter build to deploy\n")
+            yod_build = '9.0.yodreport'
+            open_build = 'openreportmainlegacy'
+            read_report = 'mainreadreport.Build'
+            if yod_build in build_name:
+                print("Yodreport build deployment started")
+                deployment_location = '/opt/Openreports/yodreport_installers/' + build_name + '/yodreport/'
+                edit_file_path = '/opt/Openreports/yodreport_installers/' + build_name + '/yodreport/'
+                edit_file_command = "sed -i 's|/opt/Openreports/yodreport_installers/9.0.yodreport.Build.623/yodreport/|/opt/Openreports/yodreport_installers/" + build_name + "/yodreport/|g;s|192.168.210.190|192.168.112.189|;s|ibuild70|iq56701|;s|system|build_user|;s|system123|build_user123|' yodreport.answer"
+                java_command = 'java -cp setup.jar run yodreport.answer'
+                copy_jobs_kitchen = '/opt/Openreports/yodreport_installers/' + build_name + '/yodreport/reports/'
+                copy_jobs_command = 'cp -r * /opt/kettle5.4.0/8.1_yodreport/'
+                copy_oltp = "/opt/Openreports/yodreport_installers/Automation/"
+                oltp_command = "cp Oltp_Host_Details.xml /opt/kettle5.4.0/8.1_yodreport/jobs/"
+                stdin, stdout, stderr = ssh.exec_command(
+                    'cd ' + edit_file_path + ';'+edit_file_command+';cd '+deployment_location+';'+java_command+'; cd '+copy_jobs_kitchen+';'+copy_jobs_command+';cd '+copy_oltp+';'+oltp_command+' ')
+                print("yodreport deployment done")
+            elif open_build in build_name:
+                print("Openreport deployemnt started")
+                deployment_location = '/opt/Openreports/openreport_installers/' + build_name + '/openreports/'
+                copy_path = "/opt/Openreports/yodreport_installers/Automation/"
+                copy_command = 'cp openreports.answer /opt/Openreports/openreport_installers/' +build_name+ '/openreports/'
+                edit_file_path = '/opt/Openreports/openreport_installers/' + build_name + '/openreports/'
+                edit_file_command = "sed -i 's|/opt/Openreports/openreport_installers/openreportmainlegacy.Build.34/openreports|/opt/Openreports/openreport_installers/" + build_name + "/openreports/|' openreports.answer"
+                java_command = 'java -cp setup.jar run openreports.answer'
+                stdin, stdout, stderr = ssh.exec_command('cd '+copy_path+';'+copy_command+';cd ' +edit_file_path+ ';' +edit_file_command+';cd '+deployment_location+';'+java_command+'')
+                print("Openreport deployment done ")
+            elif read_report in build_name:
+                print("Readreport deployemnt started")
+                deployment_location = '/opt/Openreports/readreport_installers/' + build_name + '/readreports/'
+                copy_path = "/opt/Openreports/yodreport_installers/Automation/"
+                copy_command = 'cp readreports.answer /opt/Openreports/readreport_installers/' + build_name + '/readreports/'
+                edit_file_path = '/opt/Openreports/readreport_installers/' + build_name + '/readreports/'
+                edit_file_command = "sed -i 's|/opt/Openreports/readreport_installers/mainreadreport.Build.67/readreports|/opt/Openreports/readreport_installers/" + build_name + "/readreports/|' readreports.answer"
+                java_command = 'java -cp setup.jar run readreports.answer'
+                stdin, stdout, stderr = ssh.exec_command(
+                    'cd ' + copy_path + ';' + copy_command + ';cd ' + edit_file_path + ';' + edit_file_command + ';cd ' + deployment_location + ';' + java_command + '')
+                print("Readreport deployemnt done")
+            else:
+                print("Build is not valid to deployed")
+        except Exception:
+            print(Exception)
+            exit(1)
+    #This method runs the job of the build
+    def olptFilecreation(self):
+        try:
+            print("OLTP file copy started")
+            oltp_local_path = config["olpt_host"]["oltp_local_path"]
+            oltp_remotepath = config["olpt_host"]["oltp_remote_path"]
+            with SCPClient(ssh.get_transport()) as scp:
+                scp.put(oltp_local_path, oltp_remotepath)
+                print("oltp copying Done")
+        except Exception:
+            print(Exception)
+            exit(1)
+    def copyToKitchen(self):
+        try:
+            print("copiyng to kitchen started ")
+            job_path_to_kitchen = config["kitchen"]["job_path_to_kitchen"]
+            kitchen_path = config["kitchen"]["kitchen_path"]
+            kitch_remove_path = config["kitchen"]["kitch_remove_path"]
+            remove_old_files = config["kitchen"]["kitchen_remove_old"]
+            stdin, stdout, stderr = ssh.exec_command(
+                'cd ' + kitch_remove_path + ';"' + remove_old_files + '" ; cd ' + job_path_to_kitchen + '; pwd;"' + kitchen_path + '"')
+            print(stdout.read())
+            print("files have been copied in kitchen")
+        except Exception:
+            print(Exception)
+    def jobRunning(self):
+        try:
+            job_name = input("enter job to be run\n")
+            job_oltp = input("enter oltp\n")
+            Job_date = input("input job date\n")
+            log_location = input("enter log file location\n")
+            kitchen_path = "/opt/kettle5.4.0/"
+            run_job_command = './kitchen.sh -file=/opt/kettle5.4.0/8.1_yodreport/jobs/' +job_name+ ' ' +job_oltp+ ' ' +Job_date+ ' > ' +log_location+ ' 2>&1 &'
+            print(run_job_command)
+            stdin, stdout, stderr = ssh.exec_command('cd ' + kitchen_path + ';pwd; '+run_job_command+'')
+            print(stdout.read())
+            print("Jobs running done")
+        except Exception:
+            print(Exception)
+            exit(1)
+    #This method is used to copy job folders to kitchen
+qa_server = config["qa_server"]["host"]
+username = config["qa_server"]["username"]
+password = config["qa_server"]["password"]
+remote = Myssh(qa_server,username ,password)
+class Child:
+    def final(self):
+        remote = Myssh(qa_server, username, password)
+        #remote.buildCopy()
+        remote.buildDeployment()
+        remote.jobRunning()
+object = Child ()
+object.final()
+stop = timeit.default_timer()
+print ('Code has successfully executed')
+print("Time Taken =", (stop - start))
