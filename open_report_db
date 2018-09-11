@@ -1,0 +1,141 @@
+import cx_Oracle
+import timeit
+start = timeit.default_timer()
+import pandas as pd
+import configparser
+config = configparser.ConfigParser()
+config.read("config.txt")
+class DBConnect:
+    def OpenReportDbConnect(self):
+            print("Open report connectivity started")
+            host = config["oracle_open_report"]["host"]
+            username = config["oracle_open_report"]["username"]
+            password = config["oracle_open_report"]["password"]
+            port = config["oracle_open_report"]["port"]
+            sid = config["oracle_open_report"]["sid"]
+            dsn_tns = cx_Oracle.makedsn(host, port, sid)
+            conn = cx_Oracle.connect(username, password, dsn_tns)
+            print("Open report done")
+            all_query = config["Open_report_sql"]["open_all_query"]
+            str_over_all = all_query.split(',')
+            writer_all = config["open_writer"]["writer_over_all"]
+            writer_over_all = pd.ExcelWriter(writer_all)
+            sheet_name = 'etl_job_over_all'
+            for x in str_over_all:
+                sheet_name += '.'
+                open_query1 = x
+                df = pd.read_sql_query(open_query1, conn)
+                df.to_excel(writer_over_all, sheet_name=sheet_name)
+                writer_over_all.save()
+            print("file created for over all cases")
+            open_passed = config["Open_report_sql"]["open_passed"]
+            str_passed = open_passed.split(',')
+            writer_passed = config["open_writer"]["writer_passed"]
+            writer_passed = pd.ExcelWriter(writer_passed)
+            sheet_name = 'etl_job_passed'
+            for x in str_passed:
+                sheet_name += '1'
+                open_query1 = x
+                df = pd.read_sql_query(open_query1, conn)
+                df.to_excel(writer_passed, sheet_name=sheet_name)
+                writer_passed.save()
+            print("file created for passed cases")
+            open_failed = config["Open_report_sql"]["open_failed"]
+            str_failed = open_failed.split(',')
+            writer_failed = config["open_writer"]["writer_failed"]
+            writer_failed = pd.ExcelWriter(writer_failed)
+            sheet_name = 'etl_job_failed'
+            for x in str_failed:
+                sheet_name += '1'
+                open_query1 = x
+                df = pd.read_sql_query(open_query1, conn)
+                df.to_excel(writer_failed, sheet_name=sheet_name)
+                writer_failed.save()
+            print("file created for failed cases")
+            conn.close()
+    def ReportOwnerDbConnect(self):
+        try:
+            print("Report Owner connectivity started")
+            host = config["oracle_report_owner"]["host"]
+            username = config["oracle_report_owner"]["username"]
+            password = config["oracle_report_owner"]["password"]
+            port = config["oracle_report_owner"]["port"]
+            sid = config["oracle_report_owner"]["sid"]
+            job_run_date = config["paths"]["job_run_date"]
+            dsn_tns = cx_Oracle.makedsn(host, port, sid)
+            conn = cx_Oracle.connect(username, password, dsn_tns)
+            print("Report Owner db connectivity done")
+        except Exception:
+            print("Report Owner loggin failed")
+            all_query = config["report_owner_sql"]["report_all_query"]
+            str1 = all_query.split(',')
+            #writer = pd.ExcelWriter(r'D:\Open_report\report_owner_schema\report_owner.xlsx')
+            writer1 = config["report_writer"]["writer"]
+            writer = pd.ExcelWriter(writer1)
+            sheet_name = ''
+            for x in str1:
+                sheet_name += 'b'
+                open_query1 = x
+                df = pd.read_sql_query(open_query1, conn)
+                df.to_excel(writer, sheet_name=sheet_name, index=False)
+                # df.to_excel(writer, sheet_name=merchant[i], index=False)
+                print("Your file has been created")
+                writer.save()
+            conn.close()
+    def ReportAppDbConnect(self):
+        print("DB connectivity has started")
+        host = config["oracle_db_report_app"]["host"]
+        username = config["oracle_db_report_app"]["username"]
+        password = config["oracle_db_report_app"]["password"]
+        port = config["oracle_db_report_app"]["port"]
+        sid = config["oracle_db_report_app"]["sid"]
+        job_run_date = config["paths"]["job_run_date"]
+        dsn_tns = cx_Oracle.makedsn(host, port, sid)
+        conn = cx_Oracle.connect(username, password, dsn_tns)
+        print("DB CONNECTED")
+        #query = config["sql_query"]["query"]
+        #df = pd.read_sql_query(query, conn)
+        #writer = pd.ExcelWriter(r'D:\Open_report\report_app_schema\Open_report.xlsx')
+        #df.to_excel(writer, "Result")
+        #print("Your file has been created")
+        #writer.save()
+        conn.close()
+    def OltpDbConnect(self):
+        print("DB connectivity has started")
+        host = config["oltp"]["host"]
+        #print(host)
+        #username = config["oltp"]["username"]
+        #password = config["oltp"]["password"]
+        #port = config["oltp"]["port"]
+        #sid = config["oltp"]["sid"]
+        ##Oltp query details ###
+        oltp_query = config["oltp_query"]["oltp_query"]
+        conn = cx_Oracle.connect(u'report_read/report_read@blr-devoda-scan:1521/ibtsbld')
+        print("DB CONNECTED")
+        df = pd.read_sql_query(oltp_query, conn)
+        writer = pd.ExcelWriter(r'D:\Open_report\oltp\oltp_table.xlsx')
+        df.to_excel(writer, "Result")
+        print("Your file has been created")
+        writer.save()
+        conn.close()
+        #query = config["oltp_query"]["oltp_query"]
+        #df = pd.read_sql_query(query, conn)
+        #writer = pd.ExcelWriter(r'D:\Open_report\oltp\Oltp_report.xlsx')
+        #df.to_excel(writer, "Result")
+        print("Your file has been created")
+        #writer.save()
+        #conn.close()
+class Final:
+    def finalDb(self):
+        print("Final method started")
+        db = DBConnect()
+        db.OpenReportDbConnect()
+        db.ReportOwnerDbConnect()
+        #db.ReportAppDbConnect()
+        #db.OltpDbConnect()
+        print("Final method done")
+object = Final()
+object.finalDb()
+stop = timeit.default_timer()
+#time.sleep(10)
+print("Time Taken =", (stop - start))
